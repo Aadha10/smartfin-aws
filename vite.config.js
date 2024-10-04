@@ -7,6 +7,10 @@ export default defineConfig({
     include: ['aws-amplify']
   },
   define: {
-    global:{},
+    global: {},
+  },
+  server: {
+    host: '0.0.0.0', // Allow external access
+    port: 5173,      // Optional: Specify the port if needed
   },
 });
