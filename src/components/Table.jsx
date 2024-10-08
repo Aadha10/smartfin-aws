@@ -1,7 +1,10 @@
 // component import
+import React from "react";
 import ExpenseItem from "./ExpenseItem";
 
-const Table = ({ expenses, showBudget = true }) => {
+const Table = ({ expenses, showBudget, onDelete }) => {
+  console.log("Table onDelete prop:", onDelete);
+  console.log("Is onDelete a function?", typeof onDelete === 'function');
   return (
     <div className="table">
       <table>
@@ -17,7 +20,7 @@ const Table = ({ expenses, showBudget = true }) => {
         <tbody>
           {expenses.map((expense) => (
             <tr key={expense.id}>
-              <ExpenseItem expense={expense} showBudget={showBudget} />
+              <ExpenseItem expense={expense} showBudget={showBudget} onDelete={onDelete} />
             </tr>
           ))}
         </tbody>

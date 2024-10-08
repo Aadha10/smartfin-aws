@@ -1,18 +1,12 @@
-// rrd imports
-import React from 'react';
-import { Link, useLoaderData } from "react-router-dom";
-import { Button } from '@aws-amplify/ui-react';
-import { useNavigate } from 'react-router-dom';
-// library imports
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@aws-amplify/ui-react";
 import { toast } from "react-toastify";
-import { useAuthenticator } from '@aws-amplify/ui-react';
-// components
+import { useAuthenticator } from "@aws-amplify/ui-react";
 import AddBudgetForm from "../components/AddBudgetForm";
 import AddExpenseForm from "../components/AddExpenseForm";
 import BudgetItem from "../components/BudgetItem";
 import Table from "../components/Table";
-
-// helper functions
 import {
   createBudget,
   createExpense,
@@ -20,84 +14,92 @@ import {
   fetchData,
   waait,
 } from "../helpers";
-
-// loader
-export function dashboardLoader() {
-  const userName = fetchData("userName");
-  const budgets = fetchData("budgets");
-  const expenses = fetchData("expenses");
-  return { userName, budgets, expenses };
-}
-
-// action
-export async function dashboardAction({ request }) {
-  await waait();
-
-  const data = await request.formData();
-  const { _action, ...values } = Object.fromEntries(data);
-
-  // new user submission
-  if (_action === "newUser") {
-    try {
-      localStorage.setItem("userName", JSON.stringify(values.userName));
-      return toast.success(`Welcome, ${values.userName}`);
-    } catch (e) {
-      throw new Error("There was a problem creating your account.");
-    }
-  }
-
-  if (_action === "createBudget") {
-    try {
-      createBudget({
-        name: values.newBudget,
-        amount: values.newBudgetAmount,
-      });
-      return toast.success("Budget created!");
-    } catch (e) {
-      throw new Error("There was a problem creating your budget.");
-    }
-  }
-
-  if (_action === "createExpense") {
-    try {
-      createExpense({
-        name: values.newExpense,
-        amount: values.newExpenseAmount,
-        budgetId: values.newExpenseBudget,
-      });
-      return toast.success(`Expense ${values.newExpense} created!`);
-    } catch (e) {
-      throw new Error("There was a problem creating your expense.");
-    }
-  }
-
-  if (_action === "deleteExpense") {
-    try {
-      deleteItem({
-        key: "expenses",
-        id: values.expenseId,
-      });
-      return toast.success("Expense deleted!");
-    } catch (e) {
-      throw new Error("There was a problem deleting your expense.");
-    }
-  }
-}
+import useAuth from "../hooks/useAuth";
 
 const Dashboard = () => {
-  const { userName, budgets, expenses } = useLoaderData();
-  const navigate = useNavigate();
-  const { signOut } = useAuthenticator(); // Access signOut function
-  const { user } = useAuthenticator((context) => [context.user]);
+  const userId = useAuth(); // Get userId from the useAuth hook
+  const [budgets, setBudgets] = useState([]);
+  const [expenses, setExpenses] = useState([]);
 
+  // Fetch budgets and expenses function
+  const fetchBudgetsAndExpenses = () => {
+    const userBudgets = fetchData("budgets", userId) || [];
+    const userExpenses = fetchData("expenses", userId) || [];
+    setBudgets(userBudgets);
+    setExpenses(userExpenses);
+  };
+
+  useEffect(() => {
+    fetchBudgetsAndExpenses(); // Fetch when component mounts or userId changes
+  }, [userId]); // Fetch when userId changes
+
+  const handleAction = async (actionType, values, userId) => {
+    try {
+      await waait(); // Simulate delay
+      if (!userId) {
+        throw new Error("User not authenticated. Please log in.");
+      }
+
+      if (actionType === "createBudget") {
+        if (!values.newBudget || !values.newBudgetAmount) {
+          throw new Error("Invalid budget data");
+        }
+        await createBudget({
+          name: values.newBudget,
+          amount: values.newBudgetAmount,
+          userId,
+        });
+        toast.success("Budget created!");
+        fetchBudgetsAndExpenses(); // Refresh budgets
+      }
+
+      if (actionType === "createExpense") {
+        if (
+          !values.newExpense ||
+          !values.newExpenseAmount ||
+          !values.newExpenseBudget
+        ) {
+          throw new Error("Invalid expense data");
+        }
+        await createExpense({
+          name: values.newExpense,
+          amount: values.newExpenseAmount,
+          budgetId: values.newExpenseBudget,
+          userId,
+        });
+        toast.success(`Expense ${values.newExpense} created!`);
+        fetchBudgetsAndExpenses(); // Refresh expenses
+      }
+
+      if (actionType === "deleteExpense") {
+        if (!values.expenseId) {
+          throw new Error("Invalid expense ID");
+        }
+        await deleteItem({
+          key: "expenses",
+          id: values.expenseId,
+          userId,
+        });
+        toast.success("Expense deleted!");
+        fetchBudgetsAndExpenses(); // Refresh expenses
+      }
+    } catch (e) {
+      toast.error(e.message || "There was a problem processing your request.");
+      console.error("Error in handleAction:", e);
+    }
+  };
+
+  const { signOut } = useAuthenticator();
+  const { user } = useAuthenticator();
+  const navigate = useNavigate();
   const handleSignOut = async () => {
     try {
-      await signOut(); // Sign out the user
-      navigate('/'); // Redirect to home after sign out
+      await signOut();
+      navigate("/");
     } catch (error) {
       toast.error("Error signing out");
     }
-  }
+  };
 
   return (
     <div className="dashboard">
@@ -109,13 +111,28 @@ const Dashboard = () => {
         {budgets && budgets.length > 0 ? (
           <div className="grid-lg">
             <div className="flex-lg">
-              <AddBudgetForm />
-              <AddExpenseForm budgets={budgets} />
+              <AddBudgetForm
+                onAction={(values) =>
+                  handleAction("createBudget", values, userId)
+                }
+              />
+              <AddExpenseForm
+                budgets={budgets}
+                onAction={(values) =>
+                  handleAction("createExpense", values, userId)
+                }
+              />
             </div>
             <h2>Existing Budgets</h2>
             <div className="budgets">
               {budgets.map((budget) => (
-                <BudgetItem key={budget.id} budget={budget} />
+                <BudgetItem
+                  key={budget.id}
+                  budget={budget}
+                  onDelete={(expenseId) =>
+                    handleAction("deleteExpense", { expenseId }, userId)
+                  }
+                />
               ))}
             </div>
             {expenses && expenses.length > 0 && (
@@ -138,7 +155,11 @@ const Dashboard = () => {
           <div className="grid-sm">
             <p>Personal budgeting is the secret to financial freedom.</p>
             <p>Create a budget to get started!</p>
-            <AddBudgetForm />
+            <AddBudgetForm
+              onAction={(values) =>
+                handleAction("createBudget", values, userId)
+              }
+            />
           </div>
         )}
       </div>

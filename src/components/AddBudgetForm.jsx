@@ -1,36 +1,28 @@
-// reacts
 import { useEffect, useRef } from "react";
+import { CurrencyDollarIcon } from "@heroicons/react/24/solid";
 
-// rrd imports
-import { Form, useFetcher } from "react-router-dom"
-
-// library imports
-import { CurrencyDollarIcon } from "@heroicons/react/24/solid"
-
-const AddBudgetForm = () => {
-  const fetcher = useFetcher();
-  const isSubmitting = fetcher.state === "submitting"
-
+const AddBudgetForm = ({ onAction }) => {
   const formRef = useRef();
   const focusRef = useRef();
 
   useEffect(() => {
-    if (!isSubmitting) {
-      formRef.current.reset()
-      focusRef.current.focus()
-    }
-  }, [isSubmitting])
+    formRef.current.reset();
+    focusRef.current.focus();
+  }, []);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const newBudget = e.target.newBudget.value;
+    const newBudgetAmount = e.target.newBudgetAmount.value;
+
+    // Call onAction with the form values
+    onAction({ newBudget, newBudgetAmount });
+  };
 
   return (
     <div className="form-wrapper">
-      <h2 className="h3">
-        Create budget
-      </h2>
-      <fetcher.Form
-        method="post"
-        className="grid-sm"
-        ref={formRef}
-      >
+      <h2 className="h3">Create Budget</h2>
+      <form className="grid-sm" ref={formRef} onSubmit={handleSubmit}>
         <div className="grid-xs">
           <label htmlFor="newBudget">Budget Name</label>
           <input
@@ -51,22 +43,15 @@ const AddBudgetForm = () => {
             id="newBudgetAmount"
             placeholder="e.g., $350"
             required
-            inputMode="decimal"
           />
         </div>
-        <input type="hidden" name="_action" value="createBudget" />
-        <button type="submit" className="btn btn--dark" disabled={isSubmitting}>
-          {
-            isSubmitting ? <span>Submitting…</span> : (
-              <>
-                <span>Create budget</span>
-                <CurrencyDollarIcon width={20} />
-              </>
-            )
-          }
+        <button type="submit" className="btn btn--dark">
+          <span>Create budget</span>
+          <CurrencyDollarIcon width={20} />
         </button>
-      </fetcher.Form>
+      </form>
     </div>
-  )
-}
-export default AddBudgetForm
+  );
+};
+
+export default AddBudgetForm;

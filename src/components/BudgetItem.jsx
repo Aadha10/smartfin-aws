@@ -1,6 +1,6 @@
 // rrd imports
 import { Form, Link } from "react-router-dom";
-
+import { useAuthenticator } from "@aws-amplify/ui-react";
 // library imports
 import { BanknotesIcon, TrashIcon } from "@heroicons/react/24/outline";
 
@@ -11,9 +11,22 @@ import {
   formatPercentage,
 } from "../helpers";
 
-const BudgetItem = ({ budget, showDelete = false }) => {
+const BudgetItem = ({ budget, showDelete = false, onDelete }) => {
+  const { user } = useAuthenticator((context) => [context.user]);
+  const userId = user.userId;
   const { id, name, amount, color } = budget;
-  const spent = calculateSpentByBudget(id);
+  const spent = calculateSpentByBudget(id, userId);
+
+  const handleDelete = async (event) => {
+    event.preventDefault();
+    if (confirm("Are you sure you want to permanently delete this budget?")) {
+      try {
+        await onDelete(id); // Call the onDelete function passed as a prop
+      } catch (error) {
+        console.error("Error deleting budget:", error);
+      }
+    }
+  };
 
   return (
     <div
@@ -35,24 +48,10 @@ const BudgetItem = ({ budget, showDelete = false }) => {
       </div>
       {showDelete ? (
         <div className="flex-sm">
-          <Form
-            method="post"
-            action="delete"
-            onSubmit={(event) => {
-              if (
-                !confirm(
-                  "Are you sure you want to permanently delete this budget?"
-                )
-              ) {
-                event.preventDefault();
-              }
-            }}
-          >
-            <button type="submit" className="btn">
-              <span>Delete Budget</span>
-              <TrashIcon width={20} />
-            </button>
-          </Form>
+          <button type="button" className="btn" onClick={handleDelete}>
+            <span>Delete Budget</span>
+            <TrashIcon width={20} />
+          </button>
         </div>
       ) : (
         <div className="flex-sm">
@@ -65,4 +64,5 @@ const BudgetItem = ({ budget, showDelete = false }) => {
     </div>
   );
 };
+
 export default BudgetItem;

@@ -17,8 +17,8 @@
     "aws-sdk": "^2.1691.0",
     "dot-env": "^0.0.1",
     "dotenv": "^16.4.5",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
     "react-toastify": "^9.1.1"
   },
